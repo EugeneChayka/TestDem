@@ -1,0 +1,383 @@
+Проблемы при переносе Window, заменить пути в StrtupURI app.xaml
+
+public class DatabaseHelper
+ {
+     public static bool flag = false;
+     public static int prioritet = 0;
+     public static PoprijenokEntities ent;
+     public static PoprijenokEntities GetContext()
+     {
+         if (ent == null)
+         {
+             ent = new PoprijenokEntities();
+         }
+         return ent;
+     }
+ }
+
+Основное окно:
+ <Grid>
+     <Border BorderBrush="Aqua" BorderThickness="5">
+         <Grid>
+             <Grid.RowDefinitions>
+                 <RowDefinition Height="*"></RowDefinition>
+                 <RowDefinition Height="12*"></RowDefinition>
+                 <RowDefinition Height="*"></RowDefinition>
+             </Grid.RowDefinitions>
+             <StackPanel Grid.Row="0" Background="Gray" Height="auto" Width="auto"></StackPanel>
+             <Frame Grid.Row="1" x:Name="frame" Height="auto" Width="auto" LoadCompleted="frame_LoadCompleted"/>
+             <StackPanel Grid.Row="2" Background="Gray" Height="auto" Width="auto">
+             </StackPanel>
+         </Grid>
+     </Border>
+
+ </Grid>
+
+Код для открытия автоматически окна(для подгрузки при возврате на лист Page_Loaded)
+ public MainWindow()
+ {
+     InitializeComponent();
+     frame.Content = new AgentList(frame);
+ }
+
+//Разметка основного окна со списком
+ <Grid >
+     <Grid.RowDefinitions>
+         <RowDefinition Height="41*" />
+         <RowDefinition Height="327*" />
+         <RowDefinition Height="18*" />
+     </Grid.RowDefinitions>
+
+     <Grid.Resources>
+         <DataTemplate x:Key="MyCol">
+             <Border BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="5" Padding="10">
+                 <Grid>
+                     <Grid.ColumnDefinitions>
+                         <ColumnDefinition Width="*" />
+                         <ColumnDefinition Width="Auto" />
+                     </Grid.ColumnDefinitions>
+
+                     <StackPanel Grid.Column="0">
+                         <TextBlock FontFamily="Segoe UI" HorizontalAlignment="Left" TextWrapping="Wrap">
+                             <Run Text="{Binding FirstName}" FontWeight="Bold" FontSize="16"/> 
+                             <Run Text=": " FontSize="16"/> 
+                             <Run Text="{Binding LastName}" FontWeight="Bold" FontSize="16"/> 
+                         </TextBlock>
+                         <TextBlock Text="{Binding Phone, StringFormat='{}{0} рублей'}"/>
+                     </StackPanel>
+
+                     <TextBlock Grid.Column="1" FontFamily="Segoe UI" HorizontalAlignment="Right">
+                         <TextBlock.Style>
+                             <Style TargetType="TextBlock">
+                                 <Setter Property="FontSize" Value="16"/>
+                                 <Setter Property="Text" Value="{Binding Email, StringFormat='{}{0} %'}"/>
+                                 <Style.Triggers>
+                                     <DataTrigger Binding="{Binding Email}" Value="{x:Null}">
+                                         <Setter Property="Text" Value=""/>
+                                     </DataTrigger>
+                                     <DataTrigger Binding="{Binding Email}" Value="0">
+                                         <Setter Property="Text" Value=""/>
+                                     </DataTrigger>
+                                 </Style.Triggers>
+                             </Style>
+                         </TextBlock.Style>
+                     </TextBlock>
+                 </Grid>
+             </Border>
+         </DataTemplate>
+     </Grid.Resources>
+
+     <DataGrid AutoGenerateColumns="False" x:Name="serviceGrid" Grid.Row="1" IsReadOnly="True" GridLinesVisibility="None" SelectionChanged="serviceGrid_SelectionChanged">
+         <DataGrid.Columns>
+             <DataGridTemplateColumn CellTemplate="{StaticResource MyCol}" Width="*"/>
+         </DataGrid.Columns>
+     </DataGrid>
+
+     <Grid Grid.Row="3">
+
+     </Grid>
+ </Grid>
+
+//для перехода из datagrid по объекту
+ private void serviceGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+ {
+     var u = serviceGrid.SelectedItem as Client;
+     NavigationService.Navigate(new TestPerehodi(u));
+ }
+
+//заполнение списка
+ public TestSpisok(Frame fr)
+ {
+     InitializeComponent();
+
+     Helper.GetContext();
+     List<Client> agents = new List<Client> { };
+     agents = Helper.GetContext().Client.ToList();
+     serviceGrid.ItemsSource = agents.OrderBy(AgentType => AgentType.ID);
+ }
+
+
+Добавление и редактирование:
+//тут где if это проверки на ввод нужных типов или определенной длинны
+ private void Button_Click(object sender, RoutedEventArgs e)
+ {
+     int curTypAg = Type.SelectedIndex+1;
+     if (curTypAg == 0)
+     {
+         MessageBox.Show("Type не подходит");
+         return;
+     }
+     if (this.Title.Text == "")
+     {
+         MessageBox.Show("Title не подходит");
+         return;
+     }
+     if (!(new Regex(@"\d{10}|\d{12}")).IsMatch(this.Inn.Text))
+     {
+         MessageBox.Show("INN не подходит");
+         return;
+     }
+     if (!(new Regex(@"\d{4}[\dA-Z][\dA-Z]\d{3}")).IsMatch(this.Kpp.Text))
+     {
+         MessageBox.Show("KPP не подходит");
+         return;
+     }
+     if (!(new Regex(@"^\+?\d{0,2}\-?\d{3}\-?\d{3}\-?\d{4}")).IsMatch(this.Phone.Text))
+     {
+         MessageBox.Show("PHONE не подходит");
+         return;
+     }
+     if ((this.Email.Text != "") && (!(new Regex(@"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)")).IsMatch(this.Email.Text)))
+     {
+         MessageBox.Show("Email не подходит");
+         return;
+     }
+     agent.Title = this.Title.Text;
+     agent.AgentTypeID = curTypAg;
+     agent.Address = this.Adress.Text;
+     agent.INN = this.Inn.Text;
+     agent.KPP = this.Kpp.Text;
+     agent.Phone = this.Phone.Text;
+     agent.DirectorName = this.DirectorName.Text;
+     agent.DirectorSurname = this.DirectorSurname.Text;
+     agent.DirectorPatronymic = this.DirectorPatronimyc.Text;
+     agent.Phone = this.Phone.Text;
+     agent.Email = this.Email.Text;
+     try
+     {
+         agent.Priority = Convert.ToInt32(this.Prioritet.Text);
+     }
+     catch
+     {  
+         return;
+     }
+     
+         if (agent.ID > 0)
+         {
+             helper.GetContext().Entry(agent).State = EntityState.Modified;
+             helper.GetContext().SaveChanges();
+             MessageBox.Show("Обновление информации об агенте завершено");
+         }
+         else
+         {
+             helper.ent.Agent.Add(agent);
+             helper.ent.SaveChanges();
+             MessageBox.Show("Добавление информации об агенте завершено");
+         }
+    
+     btnDelAg.IsEnabled = true;
+     btnWritHi.IsEnabled = true;
+     btnDelHi.IsEnabled = true;
+ }
+
+Для удаления используется Remove
+
+Фильтрация:
+private void mask_TextChanged(object sender, TextChangedEventArgs e)
+{
+    string fnd = ((TextBox)sender).Text;
+    try
+    {
+	//product это название datagrid
+        product.ItemsSource = helper.GetContext().Product.Where(Product => Product.Title.Contains(fnd)).ToList();
+    }
+    catch { };
+}
+
+
+Окно редактирования/добавления
+  <Grid>
+      <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"></ColumnDefinition>
+          <ColumnDefinition Width="*"></ColumnDefinition>
+          <ColumnDefinition Width="*"></ColumnDefinition>
+      </Grid.ColumnDefinitions>
+      <Grid Grid.Column="1">
+          <Grid.RowDefinitions>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="4*"></ColumnDefinition>
+              <ColumnDefinition Width="*"></ColumnDefinition>
+              <ColumnDefinition Width="4*"></ColumnDefinition>
+          </Grid.ColumnDefinitions>
+
+          <Label Content="Наименование" HorizontalAlignment="Right" Grid.Row="1"></Label>
+          <Label Content="Адрес" HorizontalAlignment="Right" Grid.Row="2"></Label>
+          <Label Content="Тип" HorizontalAlignment="Right" Grid.Row="3" ></Label>
+          <Label Content="ИНН" HorizontalAlignment="Right" Grid.Row="4" ></Label>
+          <Label Content="КПП" HorizontalAlignment="Right" Grid.Row="5"></Label>
+          <Label Content="Фамилия директора" HorizontalAlignment="Right" Grid.Row="6"></Label>
+          <Label Content="Имя директора" HorizontalAlignment="Right" Grid.Row="7" ></Label>
+          <Label Content="Отчество директора" HorizontalAlignment="Right" Grid.Row="8"></Label>
+          <Label Content="Телефон" HorizontalAlignment="Right" Grid.Row="9" ></Label>
+          <TextBox x:Name="Title" Grid.Row="1" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="Adress" Grid.Row="2" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <ComboBox x:Name="Type"  Grid.Row="3" Grid.Column="2"  Width="100" HorizontalAlignment="Left" VerticalAlignment="Center" ItemsSource="{Binding}" SelectionChanged="Type_SelectionChanged">
+              <ComboBox.ItemTemplate>
+                  <DataTemplate>
+                      <TextBlock Text="{Binding Title}"></TextBlock>
+                  </DataTemplate>
+              </ComboBox.ItemTemplate>
+          </ComboBox>
+          <TextBox x:Name="Inn" Grid.Row="4" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="Kpp" Grid.Row="5" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="DirectorSurname" Grid.Row="6" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="DirectorName" Grid.Row="7" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="DirectorPatronimyc" Grid.Row="8" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+          <TextBox x:Name="Phone" Grid.Row="9" Grid.Column="2" Width="100" HorizontalAlignment="Left"></TextBox>
+
+
+          <Button Grid.Column="0" x:Name="btnWriteAg" Grid.Row="13" Content="Записать" Click="Button_Click"></Button>
+          <Button Grid.Column="1" x:Name="btnDelAg" Grid.Row="13" Content="Удалить" Click="Button_Click_1" Grid.ColumnSpan="2" Height="32" Margin="44,0,0,0" VerticalAlignment="Top"></Button>
+      </Grid>
+      <Grid Grid.Column="2">
+          <Grid.RowDefinitions>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+              <RowDefinition Height="*"></RowDefinition>
+          </Grid.RowDefinitions>
+          <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="4*"></ColumnDefinition>
+              <ColumnDefinition Width="4*"></ColumnDefinition>
+          </Grid.ColumnDefinitions>
+          <Button Grid.Column="1" x:Name="btnBack"  Content="Назад" Click="Button_Click"  Margin="5" />
+      </Grid>
+         
+  </Grid>
+
+Тест просто чтобы был:
+ //Проверка что всегда возвращает тот же экземпляр
+ [TestMethod]
+ public void TestMethod1()
+ {
+         Helper.ent = null;
+         var firstContext = DatabaseHelper.GetContext();
+
+         var secondContext = DatabaseHelper.GetContext();
+
+         Assert.AreSame(firstContext, secondContext);
+     
+ }
+
+
+Маловероятно, но пусть будет
+namespace HashPassword
+{   //Класс для хеширования пароля
+    public class hashPassword
+    { 
+        public string HashingPassword(string password)
+        {
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] sourceBytePassw = Encoding.UTF8.GetBytes(password);
+                byte[] hashSourceBytePassw = sha256Hash.ComputeHash(sourceBytePassw);
+                string hashpassw=BitConverter.ToString(hashSourceBytePassw).Replace("-",String.Empty);
+                return hashpassw;
+            }
+        }
+    }
+}
+
+Как пример стиля для кнопок:
+<Application.Resources>
+    <Style TargetType="Button">
+        <Setter Property="Background" Value="#FFDDDDDD"/>
+        <Setter Property="Foreground" Value="#FF333333"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" 
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="#FF999999"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#FFCCCCCC"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#FFAAAAAA"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</Application.Resources>	
+
+С анимациями:
+<Style TargetType="Button">
+    <Setter Property="Background" Value="#FF4285F4"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Effect">
+        <Setter.Value>
+            <DropShadowEffect BlurRadius="4" Opacity="0.3" ShadowDepth="2"/>
+        </Setter.Value>
+    </Setter>
+    <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+            <Setter Property="Background" Value="#FF3367D6"/>
+        </Trigger>
+        <Trigger Property="IsPressed" Value="True">
+            <Setter Property="Background" Value="#FF2A56B7"/>
+        </Trigger>
+        <Trigger Property="IsEnabled" Value="False">
+            <Setter Property="Background" Value="#FFBDBDBD"/>
+        </Trigger>
+    </Style.Triggers>
+</Style>
+
+Для исключения кнопки из стиля: <Button Style="{x:Null}" Content="Особая кнопка"/>
